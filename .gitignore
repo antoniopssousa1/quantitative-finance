@@ -11,9 +11,10 @@ build/
 
 
 
-# Virtual environment (ignore runtime, but keep Code/)
+# Virtual environment (ignore runtime, but keep Code/ and all subdirectories)
 venv/*
 !venv/Code/
+!venv/Code/**
 env/
 .venv/
 .env/
