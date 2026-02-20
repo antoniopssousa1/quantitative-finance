@@ -1,6 +1,5 @@
 # Python
 __pycache__/
-*.py[cod]
 *.pyo
 *.pyd
 *.so
@@ -10,8 +9,11 @@ dist/
 build/
 .eggs/
 
-# Virtual environment
-venv/
+
+
+# Virtual environment (ignore runtime, but keep Code/)
+venv/*
+!venv/Code/
 env/
 .venv/
 .env/
