@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 import plotly.graph_objects as go
+import dash_bootstrap_components as dbc
 from dash import dcc, html, Input, Output, State
 
 from dashboard.theme import PLOTLY_LAYOUT, ACCENT, ACCENT2, ACCENT3, GREEN, RED, MUTED, TEXT, FONT
