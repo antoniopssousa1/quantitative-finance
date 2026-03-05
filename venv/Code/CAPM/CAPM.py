@@ -4,7 +4,7 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 
 # market interest rate
-RISK_FREE_RATE = 0.05
+RISK_FREE_RATE = 0.04
 # we will consider monthly returns - and we want to calculate the annual return
 MONTHS_IN_YEAR = 12
 
@@ -77,7 +77,7 @@ class CAPM:
 
 
 if __name__ == '__main__':
-    capm = CAPM(['IBM', '^GSPC'], '2010-01-01', '2026-01-01')
+    capm = CAPM(['IBM', '^GSPC'], '2010-01-01', '2026-01-01') #^GSPC stands for the S&P500.
     capm.initialize()
     capm.calculate_beta()
     capm.regression()

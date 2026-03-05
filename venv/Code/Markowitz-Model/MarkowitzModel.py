@@ -116,7 +116,7 @@ if __name__ == "__main__":
     show_data(data)
     log_daily_returns = calculate_returns(data)
     print(log_daily_returns.head())
-    #print(show_statistics(log_daily_returns))
+    print(show_statistics(log_daily_returns))
 
     means, risks, pweights = generate_portfolios(log_daily_returns)
     show_portfolio(means, risks)
