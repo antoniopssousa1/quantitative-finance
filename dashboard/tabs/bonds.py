@@ -104,8 +104,8 @@ def register_callbacks(app):
                               xaxis_title="Maturity (years)", yaxis_title="Price ($)")
 
         # ── Vasicek MC ──
-        paths_vas, _ = vasicek_bond_mc(r0, kappa, theta, sigma, vas_T,
-                                        n_steps=int(vas_T * 52), n_paths=200)
+        paths_vas, vas_price = vasicek_bond_mc(r0, kappa, theta, sigma, vas_T,
+                                               n_steps=int(vas_T * 52), n_paths=200)
         t_axis = np.linspace(0, vas_T, paths_vas.shape[1])
         fig_vas = go.Figure()
         for i in range(min(100, paths_vas.shape[0])):
@@ -144,12 +144,13 @@ def register_callbacks(app):
         zcb_dur    = zcb_duration(zcb_mat)
 
         kpis = stat_row(
-            stat("ZCB PRICE",    f"${zcb_p_now:,.2f}",  ACCENT),
-            stat("ZCB YTM",      f"{zcb_ytm_now*100:.2f}%", MUTED),
-            stat("ZCB DURATION", f"{zcb_dur:.2f} yrs",  ACCENT3),
-            stat("CB PRICE",     f"${current_cb:,.2f}", GREEN),
-            stat("MAC DURATION", f"{mac_dur:.2f} yrs",  ACCENT),
-            stat("MOD DURATION", f"{mod_dur:.2f}",       ACCENT2),
-            stat("CONVEXITY",    f"{convex:.2f}",        MUTED),
+            stat("ZCB PRICE",     f"${zcb_p_now:,.2f}",   ACCENT),
+            stat("ZCB YTM",       f"{zcb_ytm_now*100:.2f}%", MUTED),
+            stat("ZCB DURATION",  f"{zcb_dur:.2f} yrs",   ACCENT3),
+            stat("CB PRICE",      f"${current_cb:,.2f}",  GREEN),
+            stat("MAC DURATION",  f"{mac_dur:.2f} yrs",   ACCENT),
+            stat("MOD DURATION",  f"{mod_dur:.2f}",        ACCENT2),
+            stat("CONVEXITY",     f"{convex:.2f}",         MUTED),
+            stat("VASICEK ZCB",   f"${vas_price:,.2f}",   ACCENT3),
         )
         return fig_zcb, fig_vas, fig_cb, kpis

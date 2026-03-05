@@ -8,86 +8,85 @@ import numpy as np
 
 # ── Wiener Process ────────────────────────
 
-def wiener_process(T=10.0, n_steps=1000, n_paths=1, dt=None):
-    dt     = dt or T / n_steps
-    t      = np.linspace(0, T, n_steps + 1)
-    paths  = np.zeros((n_paths, n_steps + 1))
+def wiener_process(n_steps=1000, T=10.0, n_paths=1):
+    """Returns paths array of shape (n_paths, n_steps+1)."""
+    dt    = T / n_steps
+    paths = np.zeros((n_paths, n_steps + 1))
     for i in range(n_paths):
-        increments       = np.random.normal(0, np.sqrt(dt), n_steps)
-        paths[i, 1:]     = np.cumsum(increments)
-    return t, paths
+        paths[i, 1:] = np.cumsum(np.random.normal(0, np.sqrt(dt), n_steps))
+    return paths
 
 
 # ── Geometric Brownian Motion ─────────────
 
-def gbm(S0, mu, sigma, T=1.0, n_steps=252, n_paths=10):
-    dt   = T / n_steps
-    t    = np.linspace(0, T, n_steps)
-    paths = []
-    for _ in range(n_paths):
-        W = np.cumsum(np.random.standard_normal(n_steps)) * np.sqrt(dt)
-        X = (mu - 0.5 * sigma ** 2) * t + sigma * W
-        paths.append(S0 * np.exp(X))
-    return t, np.array(paths)
+def gbm(S0, mu, sigma, n_steps=252, n_paths=10, T=1.0):
+    """
+    Returns price paths array of shape (n_steps, n_paths).
+    Tab usage: gbm(S0, mu, sig, N_gbm, paths) — positional.
+    """
+    dt    = T / n_steps
+    t     = np.linspace(0, T, n_steps)
+    paths = np.zeros((n_steps, n_paths))
+    for i in range(n_paths):
+        W          = np.cumsum(np.random.standard_normal(n_steps)) * np.sqrt(dt)
+        paths[:, i] = S0 * np.exp((mu - 0.5 * sigma ** 2) * t + sigma * W)
+    return paths   # shape (n_steps, n_paths)
 
 
 # ── Ornstein-Uhlenbeck Process ────────────
 
-def ornstein_uhlenbeck(x0, kappa, theta, sigma, T=5.0, n_steps=1000, n_paths=10):
+def ornstein_uhlenbeck(x0, kappa, theta, sigma, n_steps=1000, n_paths=10, T=5.0):
+    """Returns paths array of shape (n_steps+1, n_paths)."""
     dt    = T / n_steps
-    t     = np.linspace(0, T, n_steps + 1)
-    paths = np.zeros((n_paths, n_steps + 1))
-    paths[:, 0] = x0
-    for i in range(n_paths):
-        for j in range(1, n_steps + 1):
-            dx = kappa * (theta - paths[i, j - 1]) * dt + sigma * np.sqrt(dt) * np.random.normal()
-            paths[i, j] = paths[i, j - 1] + dx
-    return t, paths
+    paths = np.zeros((n_steps + 1, n_paths))
+    paths[0, :] = x0
+    for j in range(1, n_steps + 1):
+        dW          = np.random.normal(0, np.sqrt(dt), n_paths)
+        paths[j, :] = (paths[j - 1, :]
+                       + kappa * (theta - paths[j - 1, :]) * dt
+                       + sigma * dW)
+    return paths   # shape (n_steps+1, n_paths)
 
 
 # ── Vasicek Interest Rate Model ───────────
 
-def vasicek(r0, kappa, theta, sigma, T=1.0, n_steps=252, n_paths=50):
+def vasicek(r0, kappa, theta, sigma, n_steps=252, n_paths=50, T=1.0):
+    """Returns paths array of shape (n_steps+1, n_paths)."""
     dt    = T / n_steps
-    t     = np.linspace(0, T, n_steps + 1)
-    paths = np.zeros((n_paths, n_steps + 1))
-    paths[:, 0] = r0
-    for i in range(n_paths):
-        for j in range(1, n_steps + 1):
-            dr = kappa * (theta - paths[i, j - 1]) * dt + sigma * np.sqrt(dt) * np.random.normal()
-            paths[i, j] = paths[i, j - 1] + dr
-    return t, paths
+    paths = np.zeros((n_steps + 1, n_paths))
+    paths[0, :] = r0
+    for j in range(1, n_steps + 1):
+        dW          = np.random.normal(0, np.sqrt(dt), n_paths)
+        paths[j, :] = (paths[j - 1, :]
+                       + kappa * (theta - paths[j - 1, :]) * dt
+                       + sigma * dW)
+    return paths   # shape (n_steps+1, n_paths)
 
 
-# ── Heston Stochastic Volatility (NEW) ────
+# ── Heston Stochastic Volatility ──────────
 
-def heston(S0, V0, mu, kappa, theta, sigma_v, rho, T=1.0, n_steps=252, n_paths=50):
+def heston(S0, mu, v0, kappa_v, theta_v, sigma_v, rho, n_steps=252, n_paths=50, T=1.0):
     """
-    Heston model: stochastic volatility correlated with price.
-    V0      : initial variance
-    kappa   : mean reversion speed of variance
-    theta   : long-run variance
-    sigma_v : vol-of-vol
-    rho     : correlation between price and variance Brownian motions
+    Heston stochastic volatility model.
+    Args match tab call: heston(S0, mu, v0, kv, tv, sv, rho, N, paths)
+    Returns (S_paths, V_paths) each of shape (n_steps+1, n_paths).
     """
-    dt     = T / n_steps
-    t      = np.linspace(0, T, n_steps + 1)
-    S_paths = np.zeros((n_paths, n_steps + 1))
-    V_paths = np.zeros((n_paths, n_steps + 1))
-    S_paths[:, 0] = S0
-    V_paths[:, 0] = V0
+    dt      = T / n_steps
+    S_paths = np.zeros((n_steps + 1, n_paths))
+    V_paths = np.zeros((n_steps + 1, n_paths))
+    S_paths[0, :] = S0
+    V_paths[0, :] = v0
 
-    for i in range(n_paths):
-        for j in range(1, n_steps + 1):
-            z1 = np.random.normal()
-            z2 = np.random.normal()
-            zv = z1
-            zs = rho * z1 + np.sqrt(1 - rho ** 2) * z2
-            V  = max(V_paths[i, j - 1], 0)
-            V_paths[i, j] = (V + kappa * (theta - V) * dt
-                              + sigma_v * np.sqrt(V * dt) * zv)
-            V_paths[i, j] = max(V_paths[i, j], 0)
-            S_paths[i, j] = S_paths[i, j - 1] * np.exp(
-                (mu - 0.5 * V) * dt + np.sqrt(V * dt) * zs
-            )
-    return t, S_paths, V_paths
+    for j in range(1, n_steps + 1):
+        z1 = np.random.normal(0, 1, n_paths)
+        z2 = np.random.normal(0, 1, n_paths)
+        zv = z1
+        zs = rho * z1 + np.sqrt(max(1 - rho ** 2, 0)) * z2
+        V  = np.maximum(V_paths[j - 1, :], 0)
+        V_paths[j, :] = np.maximum(
+            V + kappa_v * (theta_v - V) * dt + sigma_v * np.sqrt(V * dt) * zv, 0
+        )
+        S_paths[j, :] = S_paths[j - 1, :] * np.exp(
+            (mu - 0.5 * V) * dt + np.sqrt(V * dt) * zs
+        )
+    return S_paths, V_paths   # each (n_steps+1, n_paths)

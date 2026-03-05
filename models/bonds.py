@@ -8,11 +8,12 @@ import numpy as np
 # ── Zero-Coupon Bond ──────────────────────
 
 def zcb_price(face, maturity, rate):
-    return face / (1 + rate) ** maturity
+    return float(face / (1 + rate) ** maturity)
 
 
-def zcb_ytm(face, price, maturity):
-    return (face / price) ** (1 / maturity) - 1
+def zcb_ytm(price, face, maturity):
+    """YTM given market price. Args: price, face, maturity."""
+    return float((face / price) ** (1 / maturity) - 1)
 
 
 def zcb_duration(maturity):
@@ -22,38 +23,44 @@ def zcb_duration(maturity):
 
 # ── Coupon Bond ───────────────────────────
 
-def coupon_bond_price(face, coupon_rate, maturity, ytm):
+def coupon_bond_price(face, coupon_rate, freq, maturity, ytm):
     """
     face        : face value
     coupon_rate : annual coupon rate (decimal, e.g. 0.05)
-    maturity    : years to maturity (int)
-    ytm         : yield to maturity (decimal)
+    freq        : coupon payments per year (e.g. 2 for semi-annual)
+    maturity    : years to maturity
+    ytm         : annual yield to maturity (decimal)
     """
-    coupon = face * coupon_rate
-    price  = sum(coupon / (1 + ytm) ** t for t in range(1, maturity + 1))
-    price += face / (1 + ytm) ** maturity
-    return price
+    n      = int(maturity * freq)
+    coupon = face * coupon_rate / freq
+    r_per  = ytm / freq
+    price  = sum(coupon / (1 + r_per) ** t for t in range(1, n + 1))
+    price += face / (1 + r_per) ** n
+    return float(price)
 
 
-def macaulay_duration(face, coupon_rate, maturity, ytm):
-    coupon = face * coupon_rate
-    price  = coupon_bond_price(face, coupon_rate, maturity, ytm)
-    weighted = sum(t * (coupon / (1 + ytm) ** t) for t in range(1, maturity + 1))
-    weighted += maturity * (face / (1 + ytm) ** maturity)
-    return weighted / price
+def macaulay_duration(face, coupon_rate, freq, maturity, ytm):
+    n      = int(maturity * freq)
+    coupon = face * coupon_rate / freq
+    r_per  = ytm / freq
+    price  = coupon_bond_price(face, coupon_rate, freq, maturity, ytm)
+    weighted = sum((t / freq) * (coupon / (1 + r_per) ** t) for t in range(1, n + 1))
+    weighted += maturity * (face / (1 + r_per) ** n)
+    return float(weighted / price)
 
 
-def modified_duration(face, coupon_rate, maturity, ytm):
-    return macaulay_duration(face, coupon_rate, maturity, ytm) / (1 + ytm)
+def modified_duration(face, coupon_rate, freq, maturity, ytm):
+    return macaulay_duration(face, coupon_rate, freq, maturity, ytm) / (1 + ytm / freq)
 
 
-def bond_convexity(face, coupon_rate, maturity, ytm):
-    coupon = face * coupon_rate
-    price  = coupon_bond_price(face, coupon_rate, maturity, ytm)
-    conv   = sum(t * (t + 1) * (coupon / (1 + ytm) ** (t + 2))
-                 for t in range(1, maturity + 1))
-    conv  += maturity * (maturity + 1) * (face / (1 + ytm) ** (maturity + 2))
-    return conv / price
+def bond_convexity(face, coupon_rate, freq, maturity, ytm):
+    n      = int(maturity * freq)
+    coupon = face * coupon_rate / freq
+    r_per  = ytm / freq
+    price  = coupon_bond_price(face, coupon_rate, freq, maturity, ytm)
+    conv   = sum(t * (t + 1) * (coupon / (1 + r_per) ** (t + 2)) for t in range(1, n + 1))
+    conv  += n * (n + 1) * (face / (1 + r_per) ** (n + 2))
+    return float(conv / (price * freq ** 2))
 
 
 def yield_curve(face, coupon_rate, maturity, price_target):
@@ -68,18 +75,20 @@ def yield_curve(face, coupon_rate, maturity, price_target):
 
 # ── Vasicek Bond Pricing (Monte-Carlo) ────
 
-def vasicek_bond_mc(face, r0, kappa, theta, sigma, T=1.0, n_sims=1000, n_steps=200):
-    dt = T / n_steps
-    paths = []
-    for _ in range(n_sims):
-        r = r0
-        rates = [r]
-        for _ in range(n_steps):
-            dr = kappa * (theta - r) * dt + sigma * np.sqrt(dt) * np.random.normal()
-            r += dr
-            rates.append(r)
-        paths.append(rates)
-    sim = np.array(paths)                  # (n_sims, n_steps+1)
-    integral = sim[:, :-1].sum(axis=1) * dt
-    bond_price = face * np.mean(np.exp(-integral))
-    return bond_price, sim
+def vasicek_bond_mc(r0, kappa, theta, sigma, T=1.0, n_steps=200, n_paths=200, face=1000):
+    """
+    Simulate Vasicek short-rate paths and price a ZCB.
+    Returns (paths_array, bond_price) where paths_array has shape (n_paths, n_steps+1).
+    """
+    dt   = T / n_steps
+    paths = np.zeros((n_paths, n_steps + 1))
+    paths[:, 0] = r0
+    for j in range(1, n_steps + 1):
+        dW = np.random.normal(0, np.sqrt(dt), n_paths)
+        paths[:, j] = (paths[:, j - 1]
+                       + kappa * (theta - paths[:, j - 1]) * dt
+                       + sigma * dW)
+    # Bond price = face * E[exp(-integral r dt)]
+    integral   = paths[:, :-1].sum(axis=1) * dt
+    bond_price = face * float(np.mean(np.exp(-integral)))
+    return paths, bond_price

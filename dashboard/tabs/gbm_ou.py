@@ -88,8 +88,8 @@ def register_callbacks(app):
         N_gbm = int(T_gbm * 252)
         N_ou  = int(T_ou  * 252)
 
-        # ── GBM ──
-        gbm_paths = gbm(S0, mu, sig, N_gbm, paths)   # (N, paths)
+        # ── GBM — shape (N_gbm, paths) ──
+        gbm_paths = gbm(S0, mu, sig, N_gbm, paths)
         t_gbm     = np.linspace(0, T_gbm, N_gbm)
         fig_gbm   = go.Figure()
         for i in range(min(paths, 120)):
@@ -105,9 +105,9 @@ def register_callbacks(app):
         fig_gbm.update_layout(**PLOTLY_LAYOUT, height=260,
                               xaxis_title="Time (years)", yaxis_title="Price")
 
-        # ── OU ──
+        # ── OU — shape (N_ou+1, paths) ──
         ou_paths = ornstein_uhlenbeck(r0, kappa, theta, sigma, N_ou, paths)
-        t_ou     = np.linspace(0, T_ou, N_ou)
+        t_ou     = np.linspace(0, T_ou, ou_paths.shape[0])
         fig_ou   = go.Figure()
         for i in range(min(paths, 120)):
             fig_ou.add_trace(go.Scatter(
@@ -122,15 +122,15 @@ def register_callbacks(app):
         fig_ou.update_layout(**PLOTLY_LAYOUT, height=260,
                              xaxis_title="Time (years)", yaxis_title="Rate")
 
-        # ── Heston ──
+        # ── Heston — shape (N_hst+1, paths) ──
         N_hst = int(T_gbm * 252)
         try:
             hst_S, hst_v = heston(S0, mu, v0, kv, tv, sv, rho, N_hst, min(paths, 100))
         except Exception:
-            hst_S = gbm_paths
+            hst_S = np.vstack([np.full(min(paths, 100), S0), gbm_paths[:N_hst, :min(paths, 100)]])
             hst_v = np.full_like(hst_S, sig ** 2)
 
-        t_hst = np.linspace(0, T_gbm, N_hst)
+        t_hst = np.linspace(0, T_gbm, hst_S.shape[0])
         fig_hst = go.Figure()
         # Price (left axis)
         for i in range(min(hst_S.shape[1], 60)):

@@ -63,13 +63,13 @@ def register_callbacks(app):
         rf    = float(rf    or 0.05)
         T     = float(T     or 1.0)
 
-        # Generate GBM paths
-        sims = stock_price_mc(S0, mu, sig, N, paths)  # shape (N, paths)
-        terminal = sims[-1, :]
+        # Generate GBM paths — shape (N+1, paths)
+        sims     = stock_price_mc(S0, mu, sig, N, paths)
+        terminal = sims[-1, :]   # terminal prices row
 
         # Price charts
         fig_paths = go.Figure()
-        t_axis = np.linspace(0, T, N)
+        t_axis = np.linspace(0, T, sims.shape[0])
         for i in range(min(paths, 150)):  # cap at 150 for perf
             fig_paths.add_trace(go.Scatter(
                 x=t_axis, y=sims[:, i], mode="lines",

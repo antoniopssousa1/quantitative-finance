@@ -7,36 +7,38 @@ from numpy import sqrt
 from scipy.stats import norm
 
 
-def var_parametric(position, c, mu, sigma, n=1):
-    """Analytical (parametric) VaR."""
-    return position * (mu * n - sigma * sqrt(n) * norm.ppf(1 - c))
+def var_parametric(mu, sigma, c, n=1):
+    """
+    Parametric (analytical) VaR as a return fraction.
+    Returns positive number representing the loss fraction.
+    """
+    return -(mu * n - sigma * sqrt(n) * norm.ppf(1 - c))
 
 
-def var_historical(returns: np.ndarray, position: float, c: float):
-    """Historical simulation VaR."""
+def var_historical(returns: np.ndarray, c: float, n: int = 1):
+    """Historical simulation VaR as a positive loss fraction."""
     sorted_r = np.sort(returns)
     idx      = int((1 - c) * len(sorted_r))
-    return -position * sorted_r[idx]
+    return float(-sorted_r[max(idx, 0)] * sqrt(n))
 
 
-def var_monte_carlo(position, mu, sigma, c, n=1, iterations=100_000):
-    """Monte-Carlo VaR — returns (VaR, array of simulated P&L)."""
-    rand      = np.random.normal(0, 1, iterations)
-    ST        = position * np.exp(n * (mu - 0.5 * sigma ** 2) + sigma * sqrt(n) * rand)
-    pnl       = ST - position
-    pnl_sorted = np.sort(pnl)
-    var        = -np.percentile(pnl_sorted, (1 - c) * 100)
-    return var, pnl_sorted
+def var_monte_carlo(mu, sigma, c, n=1, iterations=100_000):
+    """Monte-Carlo VaR — returns scalar positive loss fraction."""
+    rand = np.random.normal(0, 1, iterations)
+    pnl  = mu * n + sigma * sqrt(n) * rand   # log-return distribution
+    return float(-np.percentile(pnl, (1 - c) * 100))
 
 
-def cvar_parametric(position, c, mu, sigma, n=1):
-    """Conditional VaR (Expected Shortfall) — parametric."""
+def cvar_parametric(mu, sigma, c, n=1):
+    """Conditional VaR (Expected Shortfall) — parametric, positive loss fraction."""
     alpha = 1 - c
-    return position * (-mu * n + sigma * sqrt(n) * norm.pdf(norm.ppf(alpha)) / alpha)
+    return float(-(mu * n) + sigma * sqrt(n) * norm.pdf(norm.ppf(alpha)) / alpha)
 
 
-def cvar_monte_carlo(pnl: np.ndarray, c: float):
-    """CVaR from a simulated P&L array."""
+def cvar_monte_carlo(mu, sigma, c, n=1, iterations=100_000):
+    """CVaR via Monte Carlo — positive loss fraction."""
+    rand   = np.random.normal(0, 1, iterations)
+    pnl    = mu * n + sigma * sqrt(n) * rand
     cutoff = np.percentile(pnl, (1 - c) * 100)
     tail   = pnl[pnl <= cutoff]
-    return float(-tail.mean()) if len(tail) > 0 else np.nan
+    return float(-tail.mean()) if len(tail) > 0 else float(-cutoff)

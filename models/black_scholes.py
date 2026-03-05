@@ -14,32 +14,34 @@ def _d1_d2(S, K, T, r, sigma):
 
 
 def call_price(S, K, T, r, sigma):
+    """Returns scalar call price."""
     d1, d2 = _d1_d2(S, K, T, r, sigma)
-    return S * norm.cdf(d1) - K * exp(-r * T) * norm.cdf(d2), d1, d2
+    return float(S * norm.cdf(d1) - K * exp(-r * T) * norm.cdf(d2))
 
 
 def put_price(S, K, T, r, sigma):
+    """Returns scalar put price."""
     d1, d2 = _d1_d2(S, K, T, r, sigma)
-    return -S * norm.cdf(-d1) + K * exp(-r * T) * norm.cdf(-d2), d1, d2
+    return float(-S * norm.cdf(-d1) + K * exp(-r * T) * norm.cdf(-d2))
 
 
 def greeks(S, K, T, r, sigma):
     """Returns dict of all Greeks for a European option."""
     d1, d2 = _d1_d2(S, K, T, r, sigma)
-    delta_call =  norm.cdf(d1)
-    delta_put  = -norm.cdf(-d1)
+    call_delta =  norm.cdf(d1)
+    put_delta  = -norm.cdf(-d1)
     gamma      =  norm.pdf(d1) / (S * sigma * sqrt(T))
-    theta_call = (-S * norm.pdf(d1) * sigma / (2 * sqrt(T))
+    call_theta = (-S * norm.pdf(d1) * sigma / (2 * sqrt(T))
                   - r * K * exp(-r * T) * norm.cdf(d2)) / 365
-    theta_put  = (-S * norm.pdf(d1) * sigma / (2 * sqrt(T))
+    put_theta  = (-S * norm.pdf(d1) * sigma / (2 * sqrt(T))
                   + r * K * exp(-r * T) * norm.cdf(-d2)) / 365
     vega       =  S * norm.pdf(d1) * sqrt(T) / 100
     rho_call   =  K * T * exp(-r * T) * norm.cdf(d2)  / 100
     rho_put    = -K * T * exp(-r * T) * norm.cdf(-d2) / 100
     return dict(
-        delta_call=delta_call, delta_put=delta_put,
+        call_delta=call_delta, put_delta=put_delta,
         gamma=gamma,
-        theta_call=theta_call, theta_put=theta_put,
+        call_theta=call_theta, put_theta=put_theta,
         vega=vega,
         rho_call=rho_call, rho_put=rho_put,
     )
@@ -49,17 +51,14 @@ def implied_volatility(market_price, S, K, T, r, option_type="call", tol=1e-6, m
     """Newton-Raphson implied volatility solver."""
     sigma = 0.2
     for _ in range(max_iter):
-        if option_type == "call":
-            price, _, _ = call_price(S, K, T, r, sigma)
-        else:
-            price, _, _ = put_price(S, K, T, r, sigma)
-        g = greeks(S, K, T, r, sigma)
-        vega_val = g["vega"] * 100  # un-scale
+        price    = call_price(S, K, T, r, sigma) if option_type == "call" else put_price(S, K, T, r, sigma)
+        g        = greeks(S, K, T, r, sigma)
+        vega_val = g["vega"] * 100   # un-scale
         if abs(vega_val) < 1e-10:
             break
-        diff = price - market_price
+        diff  = price - market_price
         sigma -= diff / vega_val
-        sigma = max(1e-6, sigma)
+        sigma  = max(1e-6, sigma)
         if abs(diff) < tol:
             break
     return sigma
