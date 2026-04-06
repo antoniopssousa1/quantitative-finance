@@ -86,7 +86,7 @@ def register_callbacks(app):
 
         # ── Forward price vs maturity ──
         T_range = np.linspace(0.1, 5.0, 120)
-        fwd_prices = [forward_price(S, fwd_r, t, u, q) for t in T_range]
+        fwd_prices = [forward_price(S, fwd_r, t, q, u) for t in T_range]
 
         fig_fwd = go.Figure()
         fig_fwd.add_trace(go.Scatter(x=T_range, y=fwd_prices, mode="lines",
@@ -124,7 +124,7 @@ def register_callbacks(app):
                               xaxis_title="Hazard Rate (%)", yaxis_title="CDS Spread (bps)")
 
         # KPIs
-        fwd_now = forward_price(S, fwd_r, 1.0, u, q)
+        fwd_now = forward_price(S, fwd_r, 1.0, q, u)
         irs_now = irs_value(notional, fixed_K, Rm, irs_n, irs_r)
 
         kpis = stat_row(

@@ -1,6 +1,26 @@
 # Quantitative Finance
 
-A Python-based repository covering the core theoretical and practical topics in quantitative finance — from stock market fundamentals to stochastic models and risk management.
+A Python-based repository covering the core theoretical and practical topics in quantitative finance — from stock market fundamentals to stochastic models and risk management. Includes a **Bloomberg-style interactive dashboard** built with Dash / Plotly.
+
+> **Live demo** — run `python dashboard/app.py` or double-click `run_dashboard.bat` and open `http://127.0.0.1:8050`.
+
+---
+
+## Dashboard
+
+The QF Terminal is a dark-themed, multi-tab interactive dashboard featuring:
+
+| Tab | Description |
+|-----|-------------|
+| **Market** | Candlestick charts, returns distribution, rolling volatility |
+| **Markowitz** | Efficient frontier, random portfolios, optimal weights |
+| **CAPM** | Beta/alpha regression, Sharpe, Treynor, rolling beta |
+| **Options** | Black-Scholes pricing, Greeks curves, MC verification |
+| **Monte Carlo** | GBM path simulation, terminal distribution |
+| **VaR / CVaR** | Parametric, historical & MC risk metrics |
+| **Bonds** | ZCB/coupon pricing, duration, convexity, Vasicek MC |
+| **Stochastic** | Wiener, GBM, Ornstein-Uhlenbeck, Vasicek, Heston |
+| **Derivatives** | Forwards, IRS, CDS spread analysis |
 
 ---
 
@@ -275,6 +295,10 @@ pip install -r requirements.txt
 
 # Copy and configure environment variables
 cp .env.example .env
+
+# Launch the dashboard
+python dashboard/app.py
+# …or on Windows just double-click run_dashboard.bat
 ```
 
 ---
@@ -285,6 +309,9 @@ See [`requirements.txt`](requirements.txt) for the full list of dependencies. Co
 
 - `numpy` — numerical computing
 - `pandas` — data manipulation
-- `matplotlib` / `seaborn` — visualisation
-- `scipy` — statistical functions
+- `scipy` — statistical functions and optimisation
+- `yfinance` — Yahoo Finance market data
+- `dash` / `plotly` — interactive dashboard
+- `dash-bootstrap-components` — responsive layout
+- `matplotlib` — static visualisation
 - `python-dotenv` — environment variable management

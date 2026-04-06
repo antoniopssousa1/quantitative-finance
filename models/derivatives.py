@@ -1,32 +1,50 @@
 # ─────────────────────────────────────────
 #  MODEL: Derivatives
 # ─────────────────────────────────────────
+"""Forward contracts, interest-rate swaps, CDS, and put-call parity."""
+
+from __future__ import annotations
 
 import numpy as np
 from numpy import exp, sqrt, log
 from scipy.stats import norm
 
+__all__ = [
+    "forward_price", "forward_value", "futures_pnl",
+    "irs_fixed_rate", "irs_value",
+    "cds_spread", "put_call_parity_check",
+]
+
 
 # ── Forward / Futures ─────────────────────
 
-def forward_price(S, r, T, q=0.0, storage=0.0):
+def forward_price(
+    S: float, r: float, T: float, q: float = 0.0, storage: float = 0.0,
+) -> float:
     """
-    S       : spot price
-    r       : risk-free rate (continuous)
-    T       : time to maturity (years)
-    q       : dividend yield (continuous)
-    storage : storage cost rate (for commodities)
+    Theoretical forward price: F = S·e^{(r − q + u)·T}.
+
+    Parameters
+    ----------
+    S       : Spot price.
+    r       : Risk-free rate (continuous compounding).
+    T       : Time to maturity (years).
+    q       : Continuous dividend yield.
+    storage : Storage cost rate (for commodities).
     """
     return S * exp((r - q + storage) * T)
 
 
-def forward_value(S, K, r, T, position="long"):
+def forward_value(S: float, K: float, r: float, T: float, position: str = "long") -> float:
     """Mark-to-market value of an existing forward contract."""
     V = S - K * exp(-r * T)
     return V if position == "long" else -V
 
 
-def futures_pnl(entry_price, current_price, contract_size, position="long"):
+def futures_pnl(
+    entry_price: float, current_price: float, contract_size: int, position: str = "long",
+) -> float:
+    """Simple P&L of a futures position."""
     diff = current_price - entry_price
     pnl  = diff * contract_size
     return pnl if position == "long" else -pnl
@@ -34,12 +52,15 @@ def futures_pnl(entry_price, current_price, contract_size, position="long"):
 
 # ── Interest Rate Swap ────────────────────
 
-def irs_fixed_rate(r, n_periods, freq=1):
+def irs_fixed_rate(r: float, n_periods: int, freq: int = 1) -> float:
     """
-    Par fixed rate of a plain-vanilla IRS using flat discount curve.
-    r         : risk-free rate per period
-    n_periods : number of payment periods
-    freq      : payments per year (default 1 = annual)
+    Par fixed rate of a plain-vanilla IRS under a flat discount curve.
+
+    Parameters
+    ----------
+    r         : Risk-free rate (annual).
+    n_periods : Number of payment periods.
+    freq      : Payments per year (default 1 = annual).
     """
     r_p = r / freq
     discount_factors = [1 / (1 + r_p) ** t for t in range(1, n_periods + 1)]
@@ -48,10 +69,13 @@ def irs_fixed_rate(r, n_periods, freq=1):
     return numerator / denominator if denominator != 0 else np.nan
 
 
-def irs_value(notional, fixed_rate, market_rate, maturity, r, position="pay_fixed"):
+def irs_value(
+    notional: float, fixed_rate: float, market_rate: float,
+    maturity: float, r: float, position: str = "pay_fixed",
+) -> float:
     """
     Approximate mark-to-market value of an IRS.
-    Pay-fixed: value = PV(float leg) - PV(fixed leg).
+    Pay-fixed: value = PV(float leg) − PV(fixed leg).
     """
     n_periods = int(maturity)
     annuity   = sum(1 / (1 + r) ** t for t in range(1, n_periods + 1))
@@ -63,14 +87,20 @@ def irs_value(notional, fixed_rate, market_rate, maturity, r, position="pay_fixe
 
 # ── Credit Default Swap (CDS) ─────────────
 
-def cds_spread(hazard_rate, recovery_rate, maturity, r, dt=0.25):
+def cds_spread(
+    hazard_rate: float, recovery_rate: float, maturity: float,
+    r: float, dt: float = 0.25,
+) -> float:
     """
-    CDS par spread using a flat hazard rate model.
-    hazard_rate   : λ (constant)
-    recovery_rate : R
-    maturity      : years
-    r             : risk-free rate (continuous)
-    dt            : payment frequency (0.25 = quarterly)
+    CDS par spread under a flat hazard-rate model.
+
+    Parameters
+    ----------
+    hazard_rate   : λ (constant).
+    recovery_rate : R (recovery fraction).
+    maturity      : Years.
+    r             : Risk-free rate (continuous).
+    dt            : Payment frequency in years (0.25 = quarterly).
     """
     times = np.arange(dt, maturity + dt, dt)
     survival  = np.exp(-hazard_rate * times)
@@ -88,9 +118,11 @@ def cds_spread(hazard_rate, recovery_rate, maturity, r, dt=0.25):
 
 # ── Put-Call Parity ───────────────────────
 
-def put_call_parity_check(call, put, S, K, r, T):
+def put_call_parity_check(
+    call: float, put: float, S: float, K: float, r: float, T: float,
+) -> float:
     """
-    C - P = S - K·e^{-rT}
-    Returns the arbitrage difference (should be ~0 for fair pricing).
+    Check put-call parity: C − P = S − K·e^{−rT}.
+    Returns the arbitrage residual (≈ 0 for fair pricing).
     """
     return (call - put) - (S - K * exp(-r * T))

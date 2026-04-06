@@ -1,42 +1,62 @@
 # ─────────────────────────────────────────
 #  MODEL: Stochastic Processes
-#         Wiener · GBM · OU · Vasicek
+#         Wiener · GBM · OU · Vasicek · Heston
 # ─────────────────────────────────────────
+"""Standard stochastic processes used in quantitative finance."""
+
+from __future__ import annotations
 
 import numpy as np
+
+__all__ = [
+    "wiener_process", "gbm", "ornstein_uhlenbeck", "vasicek", "heston",
+]
 
 
 # ── Wiener Process ────────────────────────
 
-def wiener_process(n_steps=1000, T=10.0, n_paths=1):
-    """Returns paths array of shape (n_paths, n_steps+1)."""
+def wiener_process(n_steps: int = 1000, T: float = 10.0, n_paths: int = 1) -> np.ndarray:
+    """
+    Standard Brownian motion (Wiener process).
+
+    Returns ndarray of shape ``(n_paths, n_steps + 1)``.
+    """
     dt    = T / n_steps
+    dW    = np.random.normal(0, np.sqrt(dt), (n_paths, n_steps))
     paths = np.zeros((n_paths, n_steps + 1))
-    for i in range(n_paths):
-        paths[i, 1:] = np.cumsum(np.random.normal(0, np.sqrt(dt), n_steps))
+    paths[:, 1:] = np.cumsum(dW, axis=1)
     return paths
 
 
 # ── Geometric Brownian Motion ─────────────
 
-def gbm(S0, mu, sigma, n_steps=252, n_paths=10, T=1.0):
+def gbm(
+    S0: float, mu: float, sigma: float,
+    n_steps: int = 252, n_paths: int = 10, T: float = 1.0,
+) -> np.ndarray:
     """
-    Returns price paths array of shape (n_steps, n_paths).
-    Tab usage: gbm(S0, mu, sig, N_gbm, paths) — positional.
+    Geometric Brownian Motion (vectorised, no per-path loop).
+
+    Returns ndarray of shape ``(n_steps, n_paths)``.
     """
-    dt    = T / n_steps
-    t     = np.linspace(0, T, n_steps)
-    paths = np.zeros((n_steps, n_paths))
-    for i in range(n_paths):
-        W          = np.cumsum(np.random.standard_normal(n_steps)) * np.sqrt(dt)
-        paths[:, i] = S0 * np.exp((mu - 0.5 * sigma ** 2) * t + sigma * W)
-    return paths   # shape (n_steps, n_paths)
+    dt  = T / n_steps
+    t   = np.linspace(0, T, n_steps)
+    dW  = np.random.standard_normal((n_steps, n_paths))
+    W   = np.cumsum(dW, axis=0) * np.sqrt(dt)
+    return S0 * np.exp((mu - 0.5 * sigma ** 2) * t[:, None] + sigma * W)
 
 
 # ── Ornstein-Uhlenbeck Process ────────────
 
-def ornstein_uhlenbeck(x0, kappa, theta, sigma, n_steps=1000, n_paths=10, T=5.0):
-    """Returns paths array of shape (n_steps+1, n_paths)."""
+def ornstein_uhlenbeck(
+    x0: float, kappa: float, theta: float, sigma: float,
+    n_steps: int = 1000, n_paths: int = 10, T: float = 5.0,
+) -> np.ndarray:
+    """
+    Ornstein-Uhlenbeck mean-reverting process (vectorised).
+
+    Returns ndarray of shape ``(n_steps + 1, n_paths)``.
+    """
     dt    = T / n_steps
     paths = np.zeros((n_steps + 1, n_paths))
     paths[0, :] = x0
@@ -50,8 +70,15 @@ def ornstein_uhlenbeck(x0, kappa, theta, sigma, n_steps=1000, n_paths=10, T=5.0)
 
 # ── Vasicek Interest Rate Model ───────────
 
-def vasicek(r0, kappa, theta, sigma, n_steps=252, n_paths=50, T=1.0):
-    """Returns paths array of shape (n_steps+1, n_paths)."""
+def vasicek(
+    r0: float, kappa: float, theta: float, sigma: float,
+    n_steps: int = 252, n_paths: int = 50, T: float = 1.0,
+) -> np.ndarray:
+    """
+    Vasicek short-rate model (vectorised).
+
+    Returns ndarray of shape ``(n_steps + 1, n_paths)``.
+    """
     dt    = T / n_steps
     paths = np.zeros((n_steps + 1, n_paths))
     paths[0, :] = r0
@@ -65,11 +92,18 @@ def vasicek(r0, kappa, theta, sigma, n_steps=252, n_paths=50, T=1.0):
 
 # ── Heston Stochastic Volatility ──────────
 
-def heston(S0, mu, v0, kappa_v, theta_v, sigma_v, rho, n_steps=252, n_paths=50, T=1.0):
+def heston(
+    S0: float, mu: float, v0: float,
+    kappa_v: float, theta_v: float, sigma_v: float, rho: float,
+    n_steps: int = 252, n_paths: int = 50, T: float = 1.0,
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Heston stochastic volatility model.
-    Args match tab call: heston(S0, mu, v0, kv, tv, sv, rho, N, paths)
-    Returns (S_paths, V_paths) each of shape (n_steps+1, n_paths).
+    Heston stochastic-volatility model.
+
+    Returns
+    -------
+    S_paths : ndarray, shape ``(n_steps + 1, n_paths)``
+    V_paths : ndarray, shape ``(n_steps + 1, n_paths)``
     """
     dt      = T / n_steps
     S_paths = np.zeros((n_steps + 1, n_paths))

@@ -1,32 +1,41 @@
 # ─────────────────────────────────────────
 #  MODEL: Black-Scholes + Greeks
 # ─────────────────────────────────────────
+"""Closed-form Black-Scholes pricing, Greeks, IV solver, and Monte-Carlo pricer."""
+
+from __future__ import annotations
 
 import numpy as np
 from numpy import log, exp, sqrt
 from scipy.stats import norm
 
+__all__ = [
+    "call_price", "put_price", "greeks",
+    "implied_volatility", "mc_option_price",
+]
 
-def _d1_d2(S, K, T, r, sigma):
+
+def _d1_d2(S: float, K: float, T: float, r: float, sigma: float) -> tuple[float, float]:
+    """Compute d₁ and d₂ for the Black-Scholes formula."""
     d1 = (log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * sqrt(T))
     d2 = d1 - sigma * sqrt(T)
     return d1, d2
 
 
-def call_price(S, K, T, r, sigma):
-    """Returns scalar call price."""
+def call_price(S: float, K: float, T: float, r: float, sigma: float) -> float:
+    """European call price: C = S·N(d₁) − K·e^{-rT}·N(d₂)."""
     d1, d2 = _d1_d2(S, K, T, r, sigma)
     return float(S * norm.cdf(d1) - K * exp(-r * T) * norm.cdf(d2))
 
 
-def put_price(S, K, T, r, sigma):
-    """Returns scalar put price."""
+def put_price(S: float, K: float, T: float, r: float, sigma: float) -> float:
+    """European put price: P = K·e^{-rT}·N(-d₂) − S·N(-d₁)."""
     d1, d2 = _d1_d2(S, K, T, r, sigma)
     return float(-S * norm.cdf(-d1) + K * exp(-r * T) * norm.cdf(-d2))
 
 
-def greeks(S, K, T, r, sigma):
-    """Returns dict of all Greeks for a European option."""
+def greeks(S: float, K: float, T: float, r: float, sigma: float) -> dict[str, float]:
+    """Return all first-order Greeks plus gamma for a European option."""
     d1, d2 = _d1_d2(S, K, T, r, sigma)
     call_delta =  norm.cdf(d1)
     put_delta  = -norm.cdf(-d1)
@@ -47,8 +56,14 @@ def greeks(S, K, T, r, sigma):
     )
 
 
-def implied_volatility(market_price, S, K, T, r, option_type="call", tol=1e-6, max_iter=200):
-    """Newton-Raphson implied volatility solver."""
+def implied_volatility(
+    market_price: float,
+    S: float, K: float, T: float, r: float,
+    option_type: str = "call",
+    tol: float = 1e-6,
+    max_iter: int = 200,
+) -> float:
+    """Newton-Raphson implied-volatility solver."""
     sigma = 0.2
     for _ in range(max_iter):
         price    = call_price(S, K, T, r, sigma) if option_type == "call" else put_price(S, K, T, r, sigma)
@@ -64,8 +79,11 @@ def implied_volatility(market_price, S, K, T, r, option_type="call", tol=1e-6, m
     return sigma
 
 
-def mc_option_price(S, K, T, r, sigma, iterations=100_000):
-    """Monte-Carlo option pricing (European call & put)."""
+def mc_option_price(
+    S: float, K: float, T: float, r: float, sigma: float,
+    iterations: int = 100_000,
+) -> tuple[float, float]:
+    """Monte-Carlo European option pricing. Returns ``(call, put)``."""
     rand = np.random.normal(0, 1, iterations)
     ST   = S * np.exp(T * (r - 0.5 * sigma ** 2) + sigma * sqrt(T) * rand)
     call = exp(-r * T) * np.mean(np.maximum(ST - K, 0))
